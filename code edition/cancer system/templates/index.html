@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancer Risk Prediction System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1>🏥 Cancer Risk Prediction System</h1>
+            <p class="subtitle">Machine Learning-Based Breast & Cervical Cancer Risk Assessment</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content">
+            <div class="welcome-box">
+                <h2>Welcome to the Prediction System</h2>
+                <p>This system uses advanced machine learning models to predict cancer risk based on patient data.</p>
+                <p class="disclaimer">⚠️ <strong>Disclaimer:</strong> This system is for educational purposes. Always consult with a qualified healthcare professional for medical diagnosis.</p>
+            </div>
+
+            <!-- Cancer Type Selection -->
+            <div class="cancer-selection">
+                <h3>Select Cancer Type to Predict:</h3>
+                
+                <div class="button-group">
+                    <!-- Breast Cancer Button -->
+                    <a href="/breast" class="cancer-btn breast-btn">
+                        <div class="btn-icon">🎀</div>
+                        <div class="btn-content">
+                            <h4>Breast Cancer</h4>
+                            <p>Predict breast cancer risk using 6 features</p>
+                        </div>
+                        <div class="btn-arrow">→</div>
+                    </a>
+
+                    <!-- Cervical Cancer Button -->
+                    <a href="/cervical" class="cancer-btn cervical-btn">
+                        <div class="btn-icon">🏥</div>
+                        <div class="btn-content">
+                            <h4>Cervical Cancer</h4>
+                            <p>Predict cervical cancer risk using 5 features</p>
+                        </div>
+                        <div class="btn-arrow">→</div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Information Section -->
+            <div class="info-section">
+                <div class="info-box">
+                    <h4>📊 How It Works:</h4>
+                    <ol>
+                        <li>Select the cancer type you want to predict</li>
+                        <li>Enter the required patient data</li>
+                        <li>Click "Predict" to get the risk assessment</li>
+                        <li>Review the prediction results and confidence level</li>
+                    </ol>
+                </div>
+
+                <div class="info-box">
+                    <h4>✅ What You Need:</h4>
+                    <ul>
+                        <li><strong>Breast Cancer:</strong> Medical measurements (6 features)</li>
+                        <li><strong>Cervical Cancer:</strong> Patient history data (5 features)</li>
+                        <li>Basic medical knowledge recommended</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2024 Cancer Risk Prediction System | Final Year Project | Machine Learning in Healthcare</p>
+        </div>
+    </div>
+</body>
+</html>

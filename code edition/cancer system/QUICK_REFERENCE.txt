@@ -1,0 +1,297 @@
+# 🎯 QUICK REFERENCE CARD
+
+## Cancer Risk Prediction System - One-Page Cheat Sheet
+
+---
+
+## 🚀 TO RUN THE APP
+
+```bash
+# Navigate to project folder
+cd d:\capstone project\code edition\cancer system
+
+# Activate virtual environment (Windows)
+venv\Scripts\activate
+
+# Install dependencies (first time only)
+pip install -r requirements.txt
+
+# Run the application
+python app.py
+
+# Open in browser
+http://localhost:5000
+```
+
+---
+
+## 📂 FILE STRUCTURE
+
+```
+app.py                 ← Main application (210 lines)
+requirements.txt       ← Dependencies
+README.md             ← Full documentation
+SETUP_GUIDE.md        ← Setup instructions
+TESTING_GUIDE.md      ← API testing
+PROJECT_SUMMARY.md    ← This summary
+
+templates/
+├── index.html        ← Home page
+├── breast.html       ← Breast form
+├── cervical.html     ← Cervical form
+└── result.html       ← Results
+
+models/
+├── breast_cancer_model.pkl
+└── cervical_rf_model.pkl
+
+static/
+└── style.css         ← All styling
+```
+
+---
+
+## 🔌 API ENDPOINTS
+
+| Method | URL | Purpose |
+|--------|-----|---------|
+| GET | `/` | Home page |
+| GET | `/breast` | Breast form |
+| GET | `/cervical` | Cervical form |
+| POST | `/predict/breast` | Breast prediction |
+| POST | `/predict/cervical` | Cervical prediction |
+
+---
+
+## 📊 INPUT FEATURES
+
+### Breast Cancer (6 fields)
+- radius_mean
+- texture_mean
+- perimeter_mean
+- area_mean
+- concavity_mean
+- symmetry_mean
+
+### Cervical Cancer (5 fields)
+- age (integer)
+- hpv (0/1)
+- smoking (0/1)
+- pregnancies (integer)
+- std_history (0/1)
+
+---
+
+## 🧪 TEST DATA
+
+### Breast - Low Risk
+```json
+{
+    "radius_mean": 12, "texture_mean": 15,
+    "perimeter_mean": 75, "area_mean": 400,
+    "concavity_mean": 0.02, "symmetry_mean": 0.12
+}
+```
+
+### Cervical - Low Risk
+```json
+{
+    "age": 25, "hpv": 0, "smoking": 0,
+    "pregnancies": 0, "std_history": 0
+}
+```
+
+---
+
+## ⚙️ COMMANDS
+
+| Task | Command |
+|------|---------|
+| Activate venv (Windows) | `venv\Scripts\activate` |
+| Activate venv (Mac/Linux) | `source venv/bin/activate` |
+| Install packages | `pip install -r requirements.txt` |
+| Run app | `python app.py` |
+| Stop app | `Ctrl + C` |
+| List packages | `pip list` |
+| Check Python | `python --version` |
+
+---
+
+## 🐛 COMMON ISSUES
+
+| Issue | Fix |
+|-------|-----|
+| Port in use | `netstat -ano \| findstr :5000` |
+| ModuleNotFoundError | `pip install -r requirements.txt` |
+| Model not found | Check `models/` folder |
+| Page not found | Check URL: `http://localhost:5000` |
+| Form not working | Check browser console (F12) |
+
+---
+
+## 📋 WORKFLOW
+
+```
+1. Start Server
+   └─ python app.py
+
+2. Open Browser
+   └─ http://localhost:5000
+
+3. Select Cancer Type
+   ├─ Breast Cancer
+   └─ Cervical Cancer
+
+4. Fill Form
+   └─ Enter patient data
+
+5. Submit Form
+   └─ Get prediction
+
+6. View Results
+   └─ See confidence & probability
+
+7. New Prediction
+   └─ Go back and repeat
+```
+
+---
+
+## 💻 CODE STRUCTURE
+
+**app.py Routes:**
+- `home()` - Returns home page
+- `breast_form()` - Returns breast form
+- `cervical_form()` - Returns cervical form
+- `predict_breast()` - Predicts breast cancer
+- `predict_cervical()` - Predicts cervical cancer
+
+**HTML Files:**
+- Forms with 5-6 input fields each
+- JavaScript handles form submission
+- Results displayed inline
+- Navigation buttons included
+
+**CSS:**
+- 450+ lines of styling
+- Mobile responsive
+- Professional design
+- Animations included
+
+---
+
+## 📊 RESPONSE FORMAT
+
+### Success Response
+```json
+{
+    "success": true,
+    "prediction": "Result text",
+    "confidence": "XX.XX%",
+    "probability_x": "XX.XX%",
+    "cancer_type": "Type"
+}
+```
+
+### Error Response
+```json
+{
+    "success": false,
+    "error": "Error message"
+}
+```
+
+---
+
+## 🔗 LINKS
+
+| Resource | URL |
+|----------|-----|
+| Flask Docs | flask.palletsprojects.com |
+| scikit-learn | scikit-learn.org |
+| Python Docs | python.org/docs |
+| HTTP Codes | httpwg.org |
+
+---
+
+## 📝 FEATURES
+
+✅ Two cancer type predictions
+✅ Real-time predictions
+✅ Confidence scores
+✅ Probability distribution
+✅ Form validation
+✅ Error handling
+✅ Mobile responsive
+✅ Professional UI
+✅ Navigation buttons
+✅ Loading indicators
+
+---
+
+## 🎯 FILES YOU CREATED
+
+| File | Size | Type |
+|------|------|------|
+| app.py | 5 KB | Python |
+| breast.html | 5 KB | HTML |
+| cervical.html | 5 KB | HTML |
+| index.html | 3 KB | HTML |
+| result.html | 1 KB | HTML |
+| style.css | 15 KB | CSS |
+| requirements.txt | 0.5 KB | Text |
+
+---
+
+## ⏱️ QUICK TIMES
+
+| Task | Time |
+|------|------|
+| Setup | 5 minutes |
+| Run app | 2 seconds |
+| Page load | < 1 second |
+| Prediction | < 500ms |
+| Model load | 2-3 seconds |
+
+---
+
+## 📞 HELP
+
+1. Read **SETUP_GUIDE.md** for installation
+2. Check **README.md** for details
+3. Review **TESTING_GUIDE.md** for API
+4. See **PROJECT_SUMMARY.md** for overview
+5. Check Flask console for errors
+6. Look at browser console (F12)
+
+---
+
+## ✅ BEFORE YOU START
+
+- [ ] Python 3.7+ installed
+- [ ] Models in `models/` folder
+- [ ] Virtual environment created
+- [ ] Dependencies installed
+- [ ] Port 5000 available
+
+---
+
+## 🎉 YOU'RE READY!
+
+```
+python app.py
+↓
+http://localhost:5000
+↓
+Fill form
+↓
+Get prediction!
+```
+
+**Happy predicting! 🏥**
+
+---
+
+**Last Updated:** May 2024
+**Version:** 1.0
+**Status:** ✅ Ready to Use
