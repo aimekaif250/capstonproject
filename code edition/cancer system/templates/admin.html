@@ -6,72 +6,164 @@
 <section class="page-heading admin-heading">
     <span class="eyebrow">Admin console</span>
     <h1>Prediction intelligence dashboard</h1>
-    <p>Monitor users, prediction reports, model behavior, and feature importance from one structured workspace.</p>
+    <p>Filter reports by model and date range, then review updated statistics, graphs, users, and model importance.</p>
 </section>
 
-<section class="admin-stats" aria-label="Prediction statistics">
-    <div class="stat-card">
-        <span>Total reports</span>
-        <strong>{{ dashboard.stats.total }}</strong>
-        <small>All saved predictions</small>
-    </div>
-    <div class="stat-card">
-        <span>Registered users</span>
-        <strong>{{ dashboard.stats.users_total }}</strong>
-        <small>Admin and standard users</small>
-    </div>
-    <div class="stat-card">
-        <span>Breast risk findings</span>
-        <strong>{{ dashboard.stats.breast_positive }}</strong>
-        <small>{{ dashboard.stats.breast_total }} breast reports</small>
-    </div>
-    <div class="stat-card">
-        <span>Cervical risk findings</span>
-        <strong>{{ dashboard.stats.cervical_positive }}</strong>
-        <small>{{ dashboard.stats.cervical_total }} cervical reports</small>
+<section class="admin-control-panel">
+    <form class="admin-filter-form" method="get" action="{{ url_for('admin_dashboard') }}">
+        <label class="field compact-field" for="model">
+            <span>Model</span>
+            <select id="model" name="model">
+                <option value="all" {% if dashboard.filters.model == 'all' %}selected{% endif %}>All models</option>
+                <option value="breast" {% if dashboard.filters.model == 'breast' %}selected{% endif %}>Breast Cancer</option>
+                <option value="cervical" {% if dashboard.filters.model == 'cervical' %}selected{% endif %}>Cervical Cancer</option>
+            </select>
+        </label>
+
+        <label class="field compact-field" for="start_date">
+            <span>Start date</span>
+            <input id="start_date" name="start_date" type="date" value="{{ dashboard.filters.start_date }}">
+        </label>
+
+        <label class="field compact-field" for="end_date">
+            <span>End date</span>
+            <input id="end_date" name="end_date" type="date" value="{{ dashboard.filters.end_date }}">
+        </label>
+
+        <div class="filter-actions">
+            <button class="btn btn-primary" type="submit">Update graphs</button>
+            <a class="btn btn-secondary" href="{{ url_for('admin_dashboard') }}">Reset</a>
+        </div>
+    </form>
+
+    <div class="active-filter">
+        <span>Active view</span>
+        <strong>{{ dashboard.filters.active_label }}</strong>
+        <small>{{ dashboard.filters.start_date }} to {{ dashboard.filters.end_date }}</small>
     </div>
 </section>
 
-<section class="admin-panel chart-panel">
-    <div class="panel-heading split-heading">
-        <div>
-            <h2>14-day prediction time series</h2>
-            <p>Trend line by total volume, with breast and cervical model overlays.</p>
-        </div>
-        <div class="chart-legend">
-            <span><i class="legend-total"></i>Total</span>
-            <span><i class="legend-breast"></i>Breast</span>
-            <span><i class="legend-cervical"></i>Cervical</span>
-        </div>
-    </div>
+<div class="admin-tabs" role="tablist" aria-label="Admin dashboard tabs">
+    <button class="tab-button active" type="button" data-tab="overview">Overview</button>
+    <button class="tab-button" type="button" data-tab="reports">Reports</button>
+    <button class="tab-button" type="button" data-tab="users">Users</button>
+    <button class="tab-button" type="button" data-tab="importance">Model Importance</button>
+</div>
 
-    <div class="svg-chart-wrap">
-        <svg class="line-chart" viewBox="0 0 {{ dashboard.chart.width }} {{ dashboard.chart.height }}" role="img" aria-label="Prediction time series">
-            <line x1="18" y1="18" x2="18" y2="202"></line>
-            <line x1="18" y1="202" x2="622" y2="202"></line>
-            <polyline class="series series-breast" points="{{ dashboard.chart.breast_points_attr }}"></polyline>
-            <polyline class="series series-cervical" points="{{ dashboard.chart.cervical_points_attr }}"></polyline>
-            <polyline class="series series-total" points="{{ dashboard.chart.total_points_attr }}"></polyline>
-            {% for point in dashboard.chart.total_points %}
-            <circle class="chart-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4">
-                <title>{{ point.label }}: {{ point.value }} total reports</title>
-            </circle>
+<section class="tab-panel active" data-panel="overview">
+    <section class="admin-stats" aria-label="Prediction statistics">
+        <div class="stat-card">
+            <span>Total reports</span>
+            <strong>{{ dashboard.stats.total }}</strong>
+            <small>Filtered predictions</small>
+        </div>
+        <div class="stat-card">
+            <span>Registered users</span>
+            <strong>{{ dashboard.stats.users_total }}</strong>
+            <small>Admin and standard users</small>
+        </div>
+        <div class="stat-card">
+            <span>Breast risk findings</span>
+            <strong>{{ dashboard.stats.breast_positive }}</strong>
+            <small>{{ dashboard.stats.breast_total }} breast reports</small>
+        </div>
+        <div class="stat-card">
+            <span>Cervical risk findings</span>
+            <strong>{{ dashboard.stats.cervical_positive }}</strong>
+            <small>{{ dashboard.stats.cervical_total }} cervical reports</small>
+        </div>
+    </section>
+
+    <section class="admin-panel chart-panel">
+        <div class="panel-heading split-heading">
+            <div>
+                <h2>Prediction time series</h2>
+                <p>Filtered report volume over the selected date range.</p>
+            </div>
+            <div class="chart-legend">
+                <span><i class="legend-total"></i>Total</span>
+                <span><i class="legend-breast"></i>Breast</span>
+                <span><i class="legend-cervical"></i>Cervical</span>
+            </div>
+        </div>
+
+        <div class="svg-chart-wrap">
+            <svg class="line-chart" viewBox="0 0 {{ dashboard.chart.width }} {{ dashboard.chart.height }}" role="img" aria-label="Prediction time series">
+                <line x1="18" y1="18" x2="18" y2="202"></line>
+                <line x1="18" y1="202" x2="622" y2="202"></line>
+                <polyline class="series series-breast" points="{{ dashboard.chart.breast_points_attr }}"></polyline>
+                <polyline class="series series-cervical" points="{{ dashboard.chart.cervical_points_attr }}"></polyline>
+                <polyline class="series series-total" points="{{ dashboard.chart.total_points_attr }}"></polyline>
+                {% for point in dashboard.chart.total_points %}
+                <circle class="chart-dot" cx="{{ point.x }}" cy="{{ point.y }}" r="4">
+                    <title>{{ point.label }}: {{ point.value }} total reports</title>
+                </circle>
+                {% endfor %}
+            </svg>
+        </div>
+
+        <div class="time-axis" style="grid-template-columns: repeat({{ dashboard.time_series|length }}, minmax(34px, 1fr));">
+            {% for row in dashboard.time_series %}
+            <span>{{ row.label }}</span>
             {% endfor %}
-        </svg>
-    </div>
+        </div>
+    </section>
 
-    <div class="time-axis">
-        {% for row in dashboard.time_series %}
-        <span>{{ row.label }}</span>
-        {% endfor %}
-    </div>
-</section>
+    <section class="admin-grid chart-summary-grid">
+        <div class="admin-panel">
+            <div class="panel-heading">
+                <h2>Model volume bar chart</h2>
+                <p>Filtered prediction count and risk rate by model.</p>
+            </div>
+            <div class="vertical-bars">
+                {% for item in dashboard.model_bars %}
+                <div class="vertical-bar-item">
+                    <div class="vertical-bar-track">
+                        <i style="height: {{ item.percent }}%"></i>
+                    </div>
+                    <strong>{{ item.count }}</strong>
+                    <span>{{ item.label }}</span>
+                    <small>{{ item.risk_percent }}% risk</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
 
-<section class="admin-grid">
-    <div class="admin-panel">
+        <div class="admin-panel pie-grid-panel">
+            <div class="panel-heading">
+                <h2>Pie charts</h2>
+                <p>Filtered report mix and risk mix.</p>
+            </div>
+            <div class="pie-grid">
+                <div class="pie-card">
+                    <div class="pie-chart" style="background: {{ dashboard.pies.model_mix.style }};">
+                        <span>{{ dashboard.pies.model_mix.breast_percent }}%</span>
+                    </div>
+                    <div>
+                        <h3>Model mix</h3>
+                        <p><i class="legend-breast"></i>Breast: {{ dashboard.pies.model_mix.breast }}</p>
+                        <p><i class="legend-cervical"></i>Cervical: {{ dashboard.pies.model_mix.cervical }}</p>
+                    </div>
+                </div>
+
+                <div class="pie-card">
+                    <div class="pie-chart" style="background: {{ dashboard.pies.risk_mix.style }};">
+                        <span>{{ dashboard.pies.risk_mix.risk_percent }}%</span>
+                    </div>
+                    <div>
+                        <h3>Risk mix</h3>
+                        <p><i class="legend-breast"></i>Risk: {{ dashboard.pies.risk_mix.risk }}</p>
+                        <p><i class="legend-safe"></i>No risk: {{ dashboard.pies.risk_mix.no_risk }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-panel">
         <div class="panel-heading">
             <h2>Result distribution</h2>
-            <p>Outcome counts grouped by model.</p>
+            <p>Outcome counts for the selected filter.</p>
         </div>
         {% if dashboard.distribution %}
         <div class="bar-list">
@@ -84,14 +176,63 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="muted">No result distribution yet.</p>
+        <p class="muted">No result distribution for this filter.</p>
         {% endif %}
-    </div>
+    </section>
+</section>
 
-    <div class="admin-panel">
+<section class="tab-panel" data-panel="reports">
+    <section class="admin-panel">
+        <div class="panel-heading split-heading">
+            <div>
+                <h2>Prediction reports</h2>
+                <p>Most recent saved model outputs for the active filter.</p>
+            </div>
+            <span class="table-count">{{ dashboard.recent_reports|length }} shown</span>
+        </div>
+
+        {% if dashboard.recent_reports %}
+        <div class="report-table-wrap">
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Prediction</th>
+                        <th>Confidence</th>
+                        <th>Negative</th>
+                        <th>Positive</th>
+                        <th>Features</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in dashboard.recent_reports %}
+                    <tr>
+                        <td>{{ report.created_at }}</td>
+                        <td>{{ report.username }}</td>
+                        <td>{{ report.cancer_type }}</td>
+                        <td>{{ report.prediction }}</td>
+                        <td>{{ "%.2f"|format(report.confidence) }}%</td>
+                        <td>{{ "%.2f"|format(report.probability_negative) }}%</td>
+                        <td>{{ "%.2f"|format(report.probability_positive) }}%</td>
+                        <td>{{ report.input_features_used }}/{{ report.total_features }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="muted">No prediction reports for this filter.</p>
+        {% endif %}
+    </section>
+</section>
+
+<section class="tab-panel" data-panel="users">
+    <section class="admin-panel">
         <div class="panel-heading">
             <h2>Admin users</h2>
-            <p>Registered accounts and prediction volume.</p>
+            <p>Registered accounts and filtered prediction volume.</p>
         </div>
         <div class="user-list">
             {% for user in dashboard.users %}
@@ -104,92 +245,73 @@
             </div>
             {% endfor %}
         </div>
-    </div>
+    </section>
 </section>
 
-<section class="model-insights">
-    <div class="section-title">
-        <span class="eyebrow">Model feature importance</span>
-        <h2>Separated model explainability</h2>
-    </div>
+<section class="tab-panel" data-panel="importance">
+    <section class="model-insights">
+        <div class="section-title">
+            <span class="eyebrow">Model feature importance</span>
+            <h2>Separated model explainability</h2>
+        </div>
 
-    <div class="admin-grid">
-        <div class="admin-panel model-panel breast-model">
-            <div class="panel-heading">
-                <h2>Breast model</h2>
-                <p>Top absolute coefficients from the scaled logistic regression model.</p>
-            </div>
-            <div class="importance-list">
-                {% for feature in dashboard.breast_importance %}
-                <div class="importance-row">
-                    <span>{{ feature.name }}</span>
-                    <div class="bar-track"><i style="width: {{ feature.percent }}%"></i></div>
-                    <strong>{{ "%.3f"|format(feature.score) }}</strong>
+        <div class="admin-grid">
+            <div class="admin-panel model-panel breast-model">
+                <div class="panel-heading">
+                    <h2>Breast model</h2>
+                    <p>Top absolute coefficients from the scaled logistic regression model.</p>
                 </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="admin-panel model-panel cervical-model">
-            <div class="panel-heading">
-                <h2>Cervical model</h2>
-                <p>Top feature importances from the balanced random forest model.</p>
-            </div>
-            <div class="importance-list">
-                {% for feature in dashboard.cervical_importance %}
-                <div class="importance-row">
-                    <span>{{ feature.name }}</span>
-                    <div class="bar-track"><i style="width: {{ feature.percent }}%"></i></div>
-                    <strong>{{ "%.3f"|format(feature.score) }}</strong>
+                <div class="importance-list">
+                    {% for feature in dashboard.breast_importance %}
+                    <div class="importance-row">
+                        <span>{{ feature.name }}</span>
+                        <div class="bar-track"><i style="width: {{ feature.percent }}%"></i></div>
+                        <strong>{{ "%.3f"|format(feature.score) }}</strong>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
+            </div>
+
+            <div class="admin-panel model-panel cervical-model">
+                <div class="panel-heading">
+                    <h2>Cervical model</h2>
+                    <p>Top feature importances from the balanced random forest model.</p>
+                </div>
+                <div class="importance-list">
+                    {% for feature in dashboard.cervical_importance %}
+                    <div class="importance-row">
+                        <span>{{ feature.name }}</span>
+                        <div class="bar-track"><i style="width: {{ feature.percent }}%"></i></div>
+                        <strong>{{ "%.3f"|format(feature.score) }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
-    </div>
+    </section>
 </section>
 
-<section class="admin-panel">
-    <div class="panel-heading split-heading">
-        <div>
-            <h2>Prediction reports</h2>
-            <p>Most recent saved model outputs.</p>
-        </div>
-        <span class="table-count">{{ dashboard.recent_reports|length }} shown</span>
-    </div>
+<script>
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabPanels = document.querySelectorAll('.tab-panel');
 
-    {% if dashboard.recent_reports %}
-    <div class="report-table-wrap">
-        <table class="report-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>User</th>
-                    <th>Type</th>
-                    <th>Prediction</th>
-                    <th>Confidence</th>
-                    <th>Negative</th>
-                    <th>Positive</th>
-                    <th>Features</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for report in dashboard.recent_reports %}
-                <tr>
-                    <td>{{ report.created_at }}</td>
-                    <td>{{ report.username }}</td>
-                    <td>{{ report.cancer_type }}</td>
-                    <td>{{ report.prediction }}</td>
-                    <td>{{ "%.2f"|format(report.confidence) }}%</td>
-                    <td>{{ "%.2f"|format(report.probability_negative) }}%</td>
-                    <td>{{ "%.2f"|format(report.probability_positive) }}%</td>
-                    <td>{{ report.input_features_used }}/{{ report.total_features }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p class="muted">Run a prediction to create the first report.</p>
-    {% endif %}
-</section>
+    function activateTab(tabName) {
+        tabButtons.forEach((button) => {
+            button.classList.toggle('active', button.dataset.tab === tabName);
+        });
+        tabPanels.forEach((panel) => {
+            panel.classList.toggle('active', panel.dataset.panel === tabName);
+        });
+        history.replaceState(null, '', `#${tabName}`);
+    }
+
+    tabButtons.forEach((button) => {
+        button.addEventListener('click', () => activateTab(button.dataset.tab));
+    });
+
+    const initialTab = window.location.hash.replace('#', '') || 'overview';
+    if (document.querySelector(`[data-tab="${initialTab}"]`)) {
+        activateTab(initialTab);
+    }
+</script>
 {% endblock %}

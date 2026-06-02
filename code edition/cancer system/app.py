@@ -429,41 +429,74 @@ def get_cervical_feature_importance(limit=12):
 
 def get_admin_dashboard_data():
     db = get_db()
+    today = date.today()
+
+    def parse_filter_date(value, fallback):
+        try:
+            return date.fromisoformat(value) if value else fallback
+        except ValueError:
+            return fallback
+
+    end_date = parse_filter_date(request.args.get('end_date'), today)
+    start_date = parse_filter_date(request.args.get('start_date'), end_date - timedelta(days=13))
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+    if (end_date - start_date).days > 30:
+        start_date = end_date - timedelta(days=30)
+
+    model_filter = request.args.get('model', 'all')
+    model_map = {
+        'breast': 'Breast Cancer',
+        'cervical': 'Cervical Cancer'
+    }
+    selected_model = model_map.get(model_filter)
+    if selected_model is None:
+        model_filter = 'all'
+
+    where_parts = ["DATE(created_at) BETWEEN ? AND ?"]
+    base_params = [start_date.isoformat(), end_date.isoformat()]
+    if selected_model:
+        where_parts.append("cancer_type = ?")
+        base_params.append(selected_model)
+
+    where_sql = " AND ".join(where_parts)
+
+    def fetch_count(extra_sql="", extra_params=None):
+        query = f"SELECT COUNT(*) AS count FROM prediction_reports WHERE {where_sql}"
+        params = list(base_params)
+        if extra_sql:
+            query += f" AND {extra_sql}"
+            params.extend(extra_params or [])
+        return db.execute(query, params).fetchone()['count']
+
     rows = db.execute(
-        """
+        f"""
         SELECT *
         FROM prediction_reports
+        WHERE {where_sql}
         ORDER BY created_at DESC, id DESC
-        LIMIT 25
-        """
+        LIMIT 50
+        """,
+        base_params
     ).fetchall()
 
-    total = db.execute('SELECT COUNT(*) AS count FROM prediction_reports').fetchone()['count']
-    breast_total = db.execute(
-        "SELECT COUNT(*) AS count FROM prediction_reports WHERE cancer_type = 'Breast Cancer'"
-    ).fetchone()['count']
-    cervical_total = db.execute(
-        "SELECT COUNT(*) AS count FROM prediction_reports WHERE cancer_type = 'Cervical Cancer'"
-    ).fetchone()['count']
-    positive_total = db.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM prediction_reports
-        WHERE prediction LIKE '%Malignant%' OR prediction LIKE '%Detected%'
-        """
-    ).fetchone()['count']
+    total = fetch_count()
+    breast_total = fetch_count("cancer_type = ?", ['Breast Cancer'])
+    cervical_total = fetch_count("cancer_type = ?", ['Cervical Cancer'])
+    positive_total = fetch_count("(prediction LIKE '%Malignant%' OR prediction LIKE '%Detected%')")
 
-    today = date.today()
-    days = [(today - timedelta(days=offset)).isoformat() for offset in range(13, -1, -1)]
+    day_count = (end_date - start_date).days
+    days = [(start_date + timedelta(days=offset)).isoformat() for offset in range(day_count + 1)]
     daily_lookup = {
         (row['day'], row['cancer_type']): row['count']
         for row in db.execute(
-            """
+            f"""
             SELECT DATE(created_at) AS day, cancer_type, COUNT(*) AS count
             FROM prediction_reports
-            WHERE DATE(created_at) >= DATE('now', '-13 days')
+            WHERE {where_sql}
             GROUP BY DATE(created_at), cancer_type
-            """
+            """,
+            base_params
         ).fetchall()
     }
     time_series = []
@@ -514,20 +547,67 @@ def get_admin_dashboard_data():
         chart[key + '_attr'] = ' '.join([f"{point['x']},{point['y']}" for point in chart[key]])
 
     distribution_rows = db.execute(
-        """
+        f"""
         SELECT cancer_type, prediction, COUNT(*) AS count
         FROM prediction_reports
+        WHERE {where_sql}
         GROUP BY cancer_type, prediction
         ORDER BY cancer_type, count DESC
-        """
+        """,
+        base_params
     ).fetchall()
     distribution = [dict(row) for row in distribution_rows]
     max_distribution = max([row['count'] for row in distribution], default=1)
     for row in distribution:
         row['percent'] = round((row['count'] / max_distribution) * 100, 2) if max_distribution else 0
 
+    breast_positive = fetch_count("cancer_type = 'Breast Cancer' AND prediction LIKE '%Malignant%'")
+    cervical_positive = fetch_count("cancer_type = 'Cervical Cancer' AND prediction LIKE '%Detected%'")
+
+    def pct(value, denominator):
+        return round((value / denominator) * 100, 2) if denominator else 0
+
+    negative_total = max(total - positive_total, 0)
+    model_bars = [
+        {
+            'label': 'Breast',
+            'count': breast_total,
+            'risk': breast_positive,
+            'percent': pct(breast_total, max(breast_total, cervical_total, 1)),
+            'risk_percent': pct(breast_positive, breast_total)
+        },
+        {
+            'label': 'Cervical',
+            'count': cervical_total,
+            'risk': cervical_positive,
+            'percent': pct(cervical_total, max(breast_total, cervical_total, 1)),
+            'risk_percent': pct(cervical_positive, cervical_total)
+        }
+    ]
+    pies = {
+        'model_mix': {
+            'breast': breast_total,
+            'cervical': cervical_total,
+            'breast_percent': pct(breast_total, total),
+            'cervical_percent': pct(cervical_total, total),
+            'style': f"conic-gradient(var(--rose) 0 {pct(breast_total, total)}%, var(--teal) {pct(breast_total, total)}% 100%)"
+        },
+        'risk_mix': {
+            'risk': positive_total,
+            'no_risk': negative_total,
+            'risk_percent': pct(positive_total, total),
+            'no_risk_percent': pct(negative_total, total),
+            'style': f"conic-gradient(var(--rose) 0 {pct(positive_total, total)}%, var(--green) {pct(positive_total, total)}% 100%)"
+        }
+    }
+
+    user_join = "prediction_reports.user_id = users.id AND DATE(prediction_reports.created_at) BETWEEN ? AND ?"
+    user_params = [start_date.isoformat(), end_date.isoformat()]
+    if selected_model:
+        user_join += " AND prediction_reports.cancer_type = ?"
+        user_params.append(selected_model)
     users = db.execute(
-        """
+        f"""
         SELECT
             users.id,
             users.username,
@@ -535,28 +615,20 @@ def get_admin_dashboard_data():
             users.created_at,
             COUNT(prediction_reports.id) AS report_count
         FROM users
-        LEFT JOIN prediction_reports ON prediction_reports.user_id = users.id
+        LEFT JOIN prediction_reports ON {user_join}
         GROUP BY users.id
         ORDER BY users.is_admin DESC, users.created_at ASC
-        """
+        """,
+        user_params
     ).fetchall()
 
-    breast_positive = db.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM prediction_reports
-        WHERE cancer_type = 'Breast Cancer' AND prediction LIKE '%Malignant%'
-        """
-    ).fetchone()['count']
-    cervical_positive = db.execute(
-        """
-        SELECT COUNT(*) AS count
-        FROM prediction_reports
-        WHERE cancer_type = 'Cervical Cancer' AND prediction LIKE '%Detected%'
-        """
-    ).fetchone()['count']
-
     return {
+        'filters': {
+            'model': model_filter,
+            'start_date': start_date.isoformat(),
+            'end_date': end_date.isoformat(),
+            'active_label': selected_model or 'All models'
+        },
         'stats': {
             'total': total,
             'breast_total': breast_total,
@@ -570,6 +642,8 @@ def get_admin_dashboard_data():
         'time_series': time_series,
         'chart': chart,
         'distribution': distribution,
+        'model_bars': model_bars,
+        'pies': pies,
         'breast_importance': get_breast_feature_importance(),
         'cervical_importance': get_cervical_feature_importance(),
         'users': users
