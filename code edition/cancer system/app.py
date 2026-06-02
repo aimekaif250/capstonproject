@@ -17,7 +17,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'capstone-dev-secret-key
 
 # Set up paths for models
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+DATABASE_PATH = os.environ.get('DATABASE_PATH', os.path.join(os.path.dirname(__file__), 'users.db'))
 
 
 def get_db():
