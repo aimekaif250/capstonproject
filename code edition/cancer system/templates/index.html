@@ -18,16 +18,16 @@
 
 <section class="workflow-grid" aria-label="Prediction workflows">
     <a class="workflow-card breast-accent" href="{{ url_for('breast_form') }}">
-        <span class="card-kicker">6 visible inputs</span>
+        <span class="card-kicker">12 visible inputs</span>
         <h2>Breast Cancer</h2>
-        <p>Cell nucleus measurements expanded into the full model feature vector.</p>
+        <p>Higher-importance cell nucleus measurements expanded into the full model feature vector.</p>
         <span class="card-action">Start assessment</span>
     </a>
 
     <a class="workflow-card cervical-accent" href="{{ url_for('cervical_form') }}">
-        <span class="card-kicker">5 visible inputs</span>
+        <span class="card-kicker">12 visible inputs</span>
         <h2>Cervical Cancer</h2>
-        <p>Patient history values combined with dataset defaults for model scoring.</p>
+        <p>Higher-importance screening and history values combined with dataset defaults for model scoring.</p>
         <span class="card-action">Start assessment</span>
     </a>
 </section>

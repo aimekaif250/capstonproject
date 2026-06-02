@@ -7,51 +7,86 @@
     <a class="back-link" href="{{ url_for('home') }}">Back to dashboard</a>
     <span class="eyebrow">Breast cancer model</span>
     <h1>Breast cancer risk prediction</h1>
-    <p>Submit six cell nucleus measurements. The application fills the remaining model features using stored reference defaults.</p>
+    <p>Submit the strongest visible predictors from the trained logistic regression model. Remaining model features are filled from reference defaults.</p>
 </section>
 
 <section class="assessment-layout">
     <aside class="assessment-aside">
         <h2>Input set</h2>
         <dl>
-            <div><dt>Visible fields</dt><dd>6</dd></div>
+            <div><dt>Visible fields</dt><dd>12</dd></div>
             <div><dt>Model features</dt><dd>30</dd></div>
-            <div><dt>Output</dt><dd>Benign or malignant probability</dd></div>
+            <div><dt>Top drivers</dt><dd>Radius SE, Texture worst, Radius worst</dd></div>
         </dl>
-        <p class="muted">Use numeric values from clinical measurement records.</p>
+        <p class="muted">Fields are ordered by absolute logistic regression coefficient, so changes should affect the prediction more clearly.</p>
     </aside>
 
     <div class="form-panel">
         <form id="breastForm" class="prediction-form">
+            <div class="sample-actions" aria-label="Sample breast inputs">
+                <button class="btn btn-secondary" type="button" data-sample="low">Load lower-risk sample</button>
+                <button class="btn btn-secondary" type="button" data-sample="high">Load higher-risk sample</button>
+            </div>
+
             <div class="form-grid">
-                <label class="field" for="radius_mean">
-                    <span>Radius mean</span>
-                    <input type="number" id="radius_mean" name="radius_mean" placeholder="15.5" step="0.1" required>
+                <label class="field" for="radius_se">
+                    <span>Radius SE</span>
+                    <input type="number" id="radius_se" name="radius_se" placeholder="0.25" min="0" step="0.01" required>
                 </label>
 
-                <label class="field" for="texture_mean">
-                    <span>Texture mean</span>
-                    <input type="number" id="texture_mean" name="texture_mean" placeholder="19.0" step="0.1" required>
+                <label class="field" for="texture_worst">
+                    <span>Texture worst</span>
+                    <input type="number" id="texture_worst" name="texture_worst" placeholder="20.0" min="0" step="0.1" required>
                 </label>
 
-                <label class="field" for="perimeter_mean">
-                    <span>Perimeter mean</span>
-                    <input type="number" id="perimeter_mean" name="perimeter_mean" placeholder="102.5" step="0.1" required>
+                <label class="field" for="radius_worst">
+                    <span>Radius worst</span>
+                    <input type="number" id="radius_worst" name="radius_worst" placeholder="13.0" min="0" step="0.1" required>
                 </label>
 
-                <label class="field" for="area_mean">
-                    <span>Area mean</span>
-                    <input type="number" id="area_mean" name="area_mean" placeholder="800.0" step="0.1" required>
+                <label class="field" for="area_se">
+                    <span>Area SE</span>
+                    <input type="number" id="area_se" name="area_se" placeholder="20.0" min="0" step="0.1" required>
+                </label>
+
+                <label class="field" for="area_worst">
+                    <span>Area worst</span>
+                    <input type="number" id="area_worst" name="area_worst" placeholder="500.0" min="0" step="0.1" required>
+                </label>
+
+                <label class="field" for="concave_points_mean">
+                    <span>Concave points mean</span>
+                    <input type="number" id="concave_points_mean" name="concave_points_mean" placeholder="0.03" min="0" step="0.001" required>
+                </label>
+
+                <label class="field" for="concave_points_worst">
+                    <span>Concave points worst</span>
+                    <input type="number" id="concave_points_worst" name="concave_points_worst" placeholder="0.08" min="0" step="0.001" required>
+                </label>
+
+                <label class="field" for="symmetry_worst">
+                    <span>Symmetry worst</span>
+                    <input type="number" id="symmetry_worst" name="symmetry_worst" placeholder="0.25" min="0" step="0.01" required>
                 </label>
 
                 <label class="field" for="concavity_mean">
                     <span>Concavity mean</span>
-                    <input type="number" id="concavity_mean" name="concavity_mean" placeholder="0.08" step="0.01" required>
+                    <input type="number" id="concavity_mean" name="concavity_mean" placeholder="0.05" min="0" step="0.01" required>
                 </label>
 
-                <label class="field" for="symmetry_mean">
-                    <span>Symmetry mean</span>
-                    <input type="number" id="symmetry_mean" name="symmetry_mean" placeholder="0.15" step="0.01" required>
+                <label class="field" for="concavity_worst">
+                    <span>Concavity worst</span>
+                    <input type="number" id="concavity_worst" name="concavity_worst" placeholder="0.20" min="0" step="0.01" required>
+                </label>
+
+                <label class="field" for="perimeter_worst">
+                    <span>Perimeter worst</span>
+                    <input type="number" id="perimeter_worst" name="perimeter_worst" placeholder="90.0" min="0" step="0.1" required>
+                </label>
+
+                <label class="field" for="compactness_se">
+                    <span>Compactness SE</span>
+                    <input type="number" id="compactness_se" name="compactness_se" placeholder="0.02" min="0" step="0.001" required>
                 </label>
             </div>
 
@@ -76,6 +111,66 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const resultSection = document.getElementById('resultSection');
     const errorMessage = document.getElementById('errorMessage');
+    const fieldNames = [
+        'radius_se',
+        'texture_worst',
+        'radius_worst',
+        'area_se',
+        'area_worst',
+        'concave_points_mean',
+        'concave_points_worst',
+        'symmetry_worst',
+        'concavity_mean',
+        'concavity_worst',
+        'perimeter_worst',
+        'compactness_se'
+    ];
+    const apiFieldNames = {
+        concave_points_mean: 'concave points_mean',
+        concave_points_worst: 'concave points_worst'
+    };
+
+    const samples = {
+        low: {
+            radius_se: 0.20,
+            texture_worst: 19.0,
+            radius_worst: 12.5,
+            area_se: 16.0,
+            area_worst: 450.0,
+            concave_points_mean: 0.02,
+            concave_points_worst: 0.05,
+            symmetry_worst: 0.23,
+            concavity_mean: 0.03,
+            concavity_worst: 0.12,
+            perimeter_worst: 85.0,
+            compactness_se: 0.015
+        },
+        high: {
+            radius_se: 1.10,
+            texture_worst: 35.0,
+            radius_worst: 28.0,
+            area_se: 130.0,
+            area_worst: 2100.0,
+            concave_points_mean: 0.14,
+            concave_points_worst: 0.27,
+            symmetry_worst: 0.42,
+            concavity_mean: 0.35,
+            concavity_worst: 0.75,
+            perimeter_worst: 180.0,
+            compactness_se: 0.08
+        }
+    };
+
+    document.querySelectorAll('[data-sample]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const sample = samples[button.dataset.sample];
+            fieldNames.forEach((fieldName) => {
+                document.getElementById(fieldName).value = sample[fieldName];
+            });
+            resultSection.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+        });
+    });
 
     breastForm.addEventListener('submit', async function(event) {
         event.preventDefault();
@@ -83,14 +178,11 @@
         resultSection.classList.add('hidden');
         errorMessage.classList.add('hidden');
 
-        const formData = {
-            radius_mean: document.getElementById('radius_mean').value,
-            texture_mean: document.getElementById('texture_mean').value,
-            perimeter_mean: document.getElementById('perimeter_mean').value,
-            area_mean: document.getElementById('area_mean').value,
-            concavity_mean: document.getElementById('concavity_mean').value,
-            symmetry_mean: document.getElementById('symmetry_mean').value
-        };
+        const formData = {};
+        fieldNames.forEach((fieldName) => {
+            const apiName = apiFieldNames[fieldName] || fieldName;
+            formData[apiName] = document.getElementById(fieldName).value;
+        });
 
         try {
             const response = await fetch('/predict/breast', {

@@ -123,14 +123,20 @@ BREAST_CANCER_FEATURES = [
     'fractal_dimension_worst'# 30 - Auto-filled
 ]
 
-# User-input features (6 features collected from web form)
+# User-input features collected from web form, ordered by model coefficient importance.
 USER_INPUT_FEATURES = [
-    'radius_mean',
-    'texture_mean',
-    'perimeter_mean',
-    'area_mean',
+    'radius_se',
+    'texture_worst',
+    'radius_worst',
+    'area_se',
+    'area_worst',
+    'concave points_mean',
+    'concave points_worst',
+    'symmetry_worst',
     'concavity_mean',
-    'symmetry_mean'
+    'concavity_worst',
+    'perimeter_worst',
+    'compactness_se'
 ]
 
 # Auto-filled features (24 features with default mean values)
@@ -200,11 +206,18 @@ CERVICAL_CANCER_FEATURES = [
 ]
 
 CERVICAL_USER_INPUTS = {
+    'schiller': 'Schiller',
+    'hinselmann': 'Hinselmann',
     'age': 'Age',
-    'hpv': 'STDs:HPV',
-    'smoking': 'Smokes',
+    'first_sexual_intercourse': 'First sexual intercourse',
+    'citology': 'Citology',
+    'hormonal_contraceptives_years': 'Hormonal Contraceptives (years)',
     'pregnancies': 'Num of pregnancies',
-    'std_history': 'STDs'
+    'sexual_partners': 'Number of sexual partners',
+    'dx': 'Dx',
+    'smokes_packs_year': 'Smokes (packs/year)',
+    'dx_cin': 'Dx:CIN',
+    'smokes_years': 'Smokes (years)'
 }
 
 
@@ -261,6 +274,31 @@ DEFAULT_VALUES = {
     'fractal_dimension_worst': 0.08395
 }
 
+def load_breast_defaults():
+    defaults = {feature: 0.0 for feature in BREAST_CANCER_FEATURES}
+    counts = {feature: 0 for feature in BREAST_CANCER_FEATURES}
+    path = os.path.join(MODEL_PATH, 'data.csv')
+
+    try:
+        with open(path, newline='') as csvfile:
+            for row in csv.DictReader(csvfile):
+                for feature in BREAST_CANCER_FEATURES:
+                    value = row.get(feature)
+                    if value in (None, '', '?'):
+                        continue
+                    defaults[feature] += float(value)
+                    counts[feature] += 1
+    except Exception as e:
+        logging.warning(f"Could not load breast defaults: {e}")
+        return DEFAULT_VALUES
+
+    for feature, count in counts.items():
+        if count:
+            defaults[feature] = defaults[feature] / count
+
+    return defaults
+
+DEFAULT_VALUES = load_breast_defaults()
 CERVICAL_DEFAULT_VALUES = load_cervical_defaults()
 
 
@@ -464,14 +502,7 @@ def predict_cervical():
     """
     Predict cervical cancer risk
     
-    Expected JSON input:
-    {
-        'age': int,
-        'hpv': int (0 or 1),
-        'smoking': int (0 or 1),
-        'pregnancies': int,
-        'std_history': int (0 or 1)
-    }
+    Expected JSON input uses the highest-importance visible cervical fields.
     
     Returns prediction result and probability
     """
@@ -484,7 +515,7 @@ def predict_cervical():
             }), 500
         
         # Get data from request
-        data = request.get_json()
+        data = request.get_json() or {}
         
         user_inputs = {}
         for input_name, feature_name in CERVICAL_USER_INPUTS.items():
@@ -574,4 +605,4 @@ def internal_server_error(e):
 
 if __name__ == "__main__":
     # Listen on all interfaces so localhost and network access both work
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)

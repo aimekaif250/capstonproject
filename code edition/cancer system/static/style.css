@@ -481,6 +481,19 @@ p {
     gap: 20px;
 }
 
+.sample-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 18px;
+}
+
+.sample-actions .btn {
+    width: auto;
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -673,6 +686,7 @@ p {
     }
 
     .form-actions,
+    .sample-actions,
     .notice-band,
     .site-footer {
         flex-direction: column;

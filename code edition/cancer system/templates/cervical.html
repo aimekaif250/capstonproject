@@ -7,44 +7,68 @@
     <a class="back-link" href="{{ url_for('home') }}">Back to dashboard</a>
     <span class="eyebrow">Cervical cancer model</span>
     <h1>Cervical cancer risk prediction</h1>
-    <p>Submit patient history values. The application expands them into the full model feature vector with dataset-based defaults.</p>
+    <p>Submit the strongest visible predictors from the trained model. Remaining model features are still filled from dataset defaults.</p>
 </section>
 
 <section class="assessment-layout">
     <aside class="assessment-aside">
         <h2>Input set</h2>
         <dl>
-            <div><dt>Visible fields</dt><dd>5</dd></div>
+            <div><dt>Visible fields</dt><dd>12</dd></div>
             <div><dt>Model features</dt><dd>35</dd></div>
-            <div><dt>Output</dt><dd>Risk probability and confidence</dd></div>
+            <div><dt>Top drivers</dt><dd>Schiller, Hinselmann, Citology, Age</dd></div>
         </dl>
-        <p class="muted">Use documented patient history values for the assessment.</p>
+        <p class="muted">The first fields are ordered by model feature importance, so changes should affect the prediction more clearly.</p>
     </aside>
 
     <div class="form-panel">
         <form id="cervicalForm" class="prediction-form">
-            <div class="form-grid">
-                <label class="field" for="age">
-                    <span>Age</span>
-                    <input type="number" id="age" name="age" placeholder="35" min="1" max="120" required>
-                </label>
+            <div class="sample-actions" aria-label="Sample cervical inputs">
+                <button class="btn btn-secondary" type="button" data-sample="low">Load lower-risk sample</button>
+                <button class="btn btn-secondary" type="button" data-sample="high">Load higher-risk sample</button>
+            </div>
 
-                <label class="field" for="hpv">
-                    <span>HPV status</span>
-                    <select id="hpv" name="hpv" required>
-                        <option value="">Select status</option>
+            <div class="form-grid">
+                <label class="field" for="schiller">
+                    <span>Schiller result</span>
+                    <select id="schiller" name="schiller" required>
+                        <option value="">Select result</option>
                         <option value="0">Negative</option>
                         <option value="1">Positive</option>
                     </select>
                 </label>
 
-                <label class="field" for="smoking">
-                    <span>Smoking status</span>
-                    <select id="smoking" name="smoking" required>
-                        <option value="">Select status</option>
-                        <option value="0">Non-smoker</option>
-                        <option value="1">Smoker</option>
+                <label class="field" for="hinselmann">
+                    <span>Hinselmann result</span>
+                    <select id="hinselmann" name="hinselmann" required>
+                        <option value="">Select result</option>
+                        <option value="0">Negative</option>
+                        <option value="1">Positive</option>
                     </select>
+                </label>
+
+                <label class="field" for="age">
+                    <span>Age</span>
+                    <input type="number" id="age" name="age" placeholder="35" min="1" max="120" required>
+                </label>
+
+                <label class="field" for="first_sexual_intercourse">
+                    <span>First sexual intercourse age</span>
+                    <input type="number" id="first_sexual_intercourse" name="first_sexual_intercourse" placeholder="18" min="1" max="80" required>
+                </label>
+
+                <label class="field" for="citology">
+                    <span>Citology result</span>
+                    <select id="citology" name="citology" required>
+                        <option value="">Select result</option>
+                        <option value="0">Negative</option>
+                        <option value="1">Positive</option>
+                    </select>
+                </label>
+
+                <label class="field" for="hormonal_contraceptives_years">
+                    <span>Hormonal contraceptives years</span>
+                    <input type="number" id="hormonal_contraceptives_years" name="hormonal_contraceptives_years" placeholder="2" min="0" max="40" step="0.1" required>
                 </label>
 
                 <label class="field" for="pregnancies">
@@ -52,13 +76,37 @@
                     <input type="number" id="pregnancies" name="pregnancies" placeholder="2" min="0" max="20" required>
                 </label>
 
-                <label class="field" for="std_history">
-                    <span>STD history</span>
-                    <select id="std_history" name="std_history" required>
-                        <option value="">Select history</option>
-                        <option value="0">No history</option>
-                        <option value="1">History present</option>
+                <label class="field" for="sexual_partners">
+                    <span>Sexual partners</span>
+                    <input type="number" id="sexual_partners" name="sexual_partners" placeholder="2" min="0" max="50" step="1" required>
+                </label>
+
+                <label class="field" for="dx">
+                    <span>Previous diagnosis</span>
+                    <select id="dx" name="dx" required>
+                        <option value="">Select status</option>
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
                     </select>
+                </label>
+
+                <label class="field" for="smokes_packs_year">
+                    <span>Smoking packs/year</span>
+                    <input type="number" id="smokes_packs_year" name="smokes_packs_year" placeholder="0" min="0" max="80" step="0.1" required>
+                </label>
+
+                <label class="field" for="dx_cin">
+                    <span>Previous CIN diagnosis</span>
+                    <select id="dx_cin" name="dx_cin" required>
+                        <option value="">Select status</option>
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                    </select>
+                </label>
+
+                <label class="field" for="smokes_years">
+                    <span>Smoking years</span>
+                    <input type="number" id="smokes_years" name="smokes_years" placeholder="0" min="0" max="80" step="0.1" required>
                 </label>
             </div>
 
@@ -83,6 +131,62 @@
     const loadingSpinner = document.getElementById('loadingSpinner');
     const resultSection = document.getElementById('resultSection');
     const errorMessage = document.getElementById('errorMessage');
+    const fieldNames = [
+        'schiller',
+        'hinselmann',
+        'age',
+        'first_sexual_intercourse',
+        'citology',
+        'hormonal_contraceptives_years',
+        'pregnancies',
+        'sexual_partners',
+        'dx',
+        'smokes_packs_year',
+        'dx_cin',
+        'smokes_years'
+    ];
+
+    const samples = {
+        low: {
+            schiller: 0,
+            hinselmann: 0,
+            age: 30,
+            first_sexual_intercourse: 18,
+            citology: 0,
+            hormonal_contraceptives_years: 1,
+            pregnancies: 1,
+            sexual_partners: 1,
+            dx: 0,
+            smokes_packs_year: 0,
+            dx_cin: 0,
+            smokes_years: 0
+        },
+        high: {
+            schiller: 1,
+            hinselmann: 1,
+            age: 55,
+            first_sexual_intercourse: 14,
+            citology: 1,
+            hormonal_contraceptives_years: 8,
+            pregnancies: 5,
+            sexual_partners: 5,
+            dx: 1,
+            smokes_packs_year: 10,
+            dx_cin: 1,
+            smokes_years: 20
+        }
+    };
+
+    document.querySelectorAll('[data-sample]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const sample = samples[button.dataset.sample];
+            fieldNames.forEach((fieldName) => {
+                document.getElementById(fieldName).value = sample[fieldName];
+            });
+            resultSection.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+        });
+    });
 
     cervicalForm.addEventListener('submit', async function(event) {
         event.preventDefault();
@@ -90,13 +194,10 @@
         resultSection.classList.add('hidden');
         errorMessage.classList.add('hidden');
 
-        const formData = {
-            age: document.getElementById('age').value,
-            hpv: document.getElementById('hpv').value,
-            smoking: document.getElementById('smoking').value,
-            pregnancies: document.getElementById('pregnancies').value,
-            std_history: document.getElementById('std_history').value
-        };
+        const formData = {};
+        fieldNames.forEach((fieldName) => {
+            formData[fieldName] = document.getElementById(fieldName).value;
+        });
 
         try {
             const response = await fetch('/predict/cervical', {
