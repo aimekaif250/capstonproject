@@ -1,230 +1,133 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breast Cancer Prediction - Cancer Risk Prediction System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header">
-            <h1>🎀 Breast Cancer Risk Prediction</h1>
-            <p class="subtitle">Enter patient measurements to predict breast cancer risk</p>
-            <a href="/" class="back-link">← Back to Home</a>
-        </div>
+{% extends "base.html" %}
 
-        <!-- Main Content -->
-        <div class="content">
-            <div class="form-container">
-                <h2>Patient Measurement Data</h2>
-                <p class="form-description">Please enter the following measurements for the patient:</p>
+{% block title %}Breast Cancer Assessment - Cancer Risk Prediction System{% endblock %}
 
-                <form id="breastForm">
-                    <div class="form-group">
-                        <label for="radius_mean">
-                            Radius Mean <span class="required">*</span>
-                            <span class="help-text">(Average distance from center to perimeter)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="radius_mean" 
-                            name="radius_mean" 
-                            placeholder="e.g., 15.5" 
-                            step="0.1"
-                            required
-                        >
-                    </div>
+{% block content %}
+<section class="page-heading">
+    <a class="back-link" href="{{ url_for('home') }}">Back to dashboard</a>
+    <span class="eyebrow">Breast cancer model</span>
+    <h1>Breast cancer risk prediction</h1>
+    <p>Submit six cell nucleus measurements. The application fills the remaining model features using stored reference defaults.</p>
+</section>
 
-                    <div class="form-group">
-                        <label for="texture_mean">
-                            Texture Mean <span class="required">*</span>
-                            <span class="help-text">(Standard deviation of gray-scale values)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="texture_mean" 
-                            name="texture_mean" 
-                            placeholder="e.g., 19.0" 
-                            step="0.1"
-                            required
-                        >
-                    </div>
+<section class="assessment-layout">
+    <aside class="assessment-aside">
+        <h2>Input set</h2>
+        <dl>
+            <div><dt>Visible fields</dt><dd>6</dd></div>
+            <div><dt>Model features</dt><dd>30</dd></div>
+            <div><dt>Output</dt><dd>Benign or malignant probability</dd></div>
+        </dl>
+        <p class="muted">Use numeric values from clinical measurement records.</p>
+    </aside>
 
-                    <div class="form-group">
-                        <label for="perimeter_mean">
-                            Perimeter Mean <span class="required">*</span>
-                            <span class="help-text">(Perimeter around the cell nucleus)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="perimeter_mean" 
-                            name="perimeter_mean" 
-                            placeholder="e.g., 102.5" 
-                            step="0.1"
-                            required
-                        >
-                    </div>
+    <div class="form-panel">
+        <form id="breastForm" class="prediction-form">
+            <div class="form-grid">
+                <label class="field" for="radius_mean">
+                    <span>Radius mean</span>
+                    <input type="number" id="radius_mean" name="radius_mean" placeholder="15.5" step="0.1" required>
+                </label>
 
-                    <div class="form-group">
-                        <label for="area_mean">
-                            Area Mean <span class="required">*</span>
-                            <span class="help-text">(Area of the cell nucleus)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="area_mean" 
-                            name="area_mean" 
-                            placeholder="e.g., 800.0" 
-                            step="0.1"
-                            required
-                        >
-                    </div>
+                <label class="field" for="texture_mean">
+                    <span>Texture mean</span>
+                    <input type="number" id="texture_mean" name="texture_mean" placeholder="19.0" step="0.1" required>
+                </label>
 
-                    <div class="form-group">
-                        <label for="concavity_mean">
-                            Concavity Mean <span class="required">*</span>
-                            <span class="help-text">(Severity of concave portions)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="concavity_mean" 
-                            name="concavity_mean" 
-                            placeholder="e.g., 0.08" 
-                            step="0.01"
-                            required
-                        >
-                    </div>
+                <label class="field" for="perimeter_mean">
+                    <span>Perimeter mean</span>
+                    <input type="number" id="perimeter_mean" name="perimeter_mean" placeholder="102.5" step="0.1" required>
+                </label>
 
-                    <div class="form-group">
-                        <label for="symmetry_mean">
-                            Symmetry Mean <span class="required">*</span>
-                            <span class="help-text">(Symmetry of the nucleus)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="symmetry_mean" 
-                            name="symmetry_mean" 
-                            placeholder="e.g., 0.15" 
-                            step="0.01"
-                            required
-                        >
-                    </div>
+                <label class="field" for="area_mean">
+                    <span>Area mean</span>
+                    <input type="number" id="area_mean" name="area_mean" placeholder="800.0" step="0.1" required>
+                </label>
 
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">🔍 Predict Cancer Risk</button>
-                        <button type="reset" class="btn btn-secondary">↻ Clear Form</button>
-                    </div>
-                </form>
+                <label class="field" for="concavity_mean">
+                    <span>Concavity mean</span>
+                    <input type="number" id="concavity_mean" name="concavity_mean" placeholder="0.08" step="0.01" required>
+                </label>
 
-                <!-- Loading indicator -->
-                <div id="loadingSpinner" class="loading-spinner hidden">
-                    <div class="spinner"></div>
-                    <p>Processing prediction...</p>
-                </div>
-
-                <!-- Result section (hidden initially) -->
-                <div id="resultSection" class="result-section hidden">
-                    <!-- Results will be displayed here by JavaScript -->
-                </div>
-
-                <!-- Error message (hidden initially) -->
-                <div id="errorMessage" class="error-message hidden"></div>
+                <label class="field" for="symmetry_mean">
+                    <span>Symmetry mean</span>
+                    <input type="number" id="symmetry_mean" name="symmetry_mean" placeholder="0.15" step="0.01" required>
+                </label>
             </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Run prediction</button>
+                <button type="reset" class="btn btn-secondary">Clear</button>
+            </div>
+        </form>
+
+        <div id="loadingSpinner" class="loading-spinner hidden" aria-live="polite">
+            <div class="spinner"></div>
+            <p>Processing prediction...</p>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <p>&copy; 2024 Cancer Risk Prediction System | Final Year Project</p>
-        </div>
+        <div id="resultSection" class="result-section hidden" aria-live="polite"></div>
+        <div id="errorMessage" class="error-message hidden" aria-live="assertive"></div>
     </div>
+</section>
 
-    <script>
-        // Handle form submission
-        document.getElementById('breastForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Show loading spinner
-            document.getElementById('loadingSpinner').classList.remove('hidden');
-            document.getElementById('resultSection').classList.add('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            
-            try {
-                // Collect form data
-                const formData = {
-                    radius_mean: document.getElementById('radius_mean').value,
-                    texture_mean: document.getElementById('texture_mean').value,
-                    perimeter_mean: document.getElementById('perimeter_mean').value,
-                    area_mean: document.getElementById('area_mean').value,
-                    concavity_mean: document.getElementById('concavity_mean').value,
-                    symmetry_mean: document.getElementById('symmetry_mean').value
-                };
-                
-                // Send prediction request to backend
-                const response = await fetch('/predict/breast', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                // Parse response
-                const data = await response.json();
-                
-                // Hide loading spinner
-                document.getElementById('loadingSpinner').classList.add('hidden');
-                
-                if (data.success) {
-                    // Display results
-                    const resultHTML = `
-                        <div class="result-success">
-                            <h3>✅ Prediction Results</h3>
-                            <div class="result-box">
-                                <div class="result-row">
-                                    <span class="result-label">Cancer Type:</span>
-                                    <span class="result-value">${data.cancer_type}</span>
-                                </div>
-                                <div class="result-row highlight">
-                                    <span class="result-label">Prediction:</span>
-                                    <span class="result-value prediction-${data.prediction.includes('Benign') ? 'benign' : 'malignant'}">
-                                        ${data.prediction}
-                                    </span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Confidence:</span>
-                                    <span class="result-value">${data.confidence}</span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Probability (Benign):</span>
-                                    <span class="result-value">${data.probability_benign}</span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Probability (Malignant):</span>
-                                    <span class="result-value">${data.probability_malignant}</span>
-                                </div>
-                            </div>
-                            <div class="result-actions">
-                                <button onclick="location.href='/'" class="btn btn-primary">🏠 Home</button>
-                                <button onclick="location.href='/breast'" class="btn btn-secondary">➕ Another Prediction</button>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('resultSection').innerHTML = resultHTML;
-                    document.getElementById('resultSection').classList.remove('hidden');
-                } else {
-                    // Show error message
-                    document.getElementById('errorMessage').textContent = `Error: ${data.error}`;
-                    document.getElementById('errorMessage').classList.remove('hidden');
-                }
-            } catch (error) {
-                document.getElementById('loadingSpinner').classList.add('hidden');
-                document.getElementById('errorMessage').textContent = `Error: ${error.message}`;
-                document.getElementById('errorMessage').classList.remove('hidden');
-                console.error('Error:', error);
+<script>
+    const breastForm = document.getElementById('breastForm');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultSection = document.getElementById('resultSection');
+    const errorMessage = document.getElementById('errorMessage');
+
+    breastForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        loadingSpinner.classList.remove('hidden');
+        resultSection.classList.add('hidden');
+        errorMessage.classList.add('hidden');
+
+        const formData = {
+            radius_mean: document.getElementById('radius_mean').value,
+            texture_mean: document.getElementById('texture_mean').value,
+            perimeter_mean: document.getElementById('perimeter_mean').value,
+            area_mean: document.getElementById('area_mean').value,
+            concavity_mean: document.getElementById('concavity_mean').value,
+            symmetry_mean: document.getElementById('symmetry_mean').value
+        };
+
+        try {
+            const response = await fetch('/predict/breast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await response.json();
+            loadingSpinner.classList.add('hidden');
+
+            if (!data.success) {
+                errorMessage.textContent = data.error || 'Prediction failed.';
+                errorMessage.classList.remove('hidden');
+                return;
             }
-        });
-    </script>
-</body>
-</html>
+
+            const resultClass = data.prediction.includes('Benign') ? 'positive' : 'danger';
+            resultSection.innerHTML = `
+                <div class="result-card ${resultClass}">
+                    <div class="result-header">
+                        <span>${data.cancer_type}</span>
+                        <strong>${data.prediction}</strong>
+                    </div>
+                    <div class="metric-grid">
+                        <div><span>Confidence</span><strong>${data.confidence}</strong></div>
+                        <div><span>Benign</span><strong>${data.probability_benign}</strong></div>
+                        <div><span>Malignant</span><strong>${data.probability_malignant}</strong></div>
+                        <div><span>Features</span><strong>${data.input_features_used}/${data.total_features}</strong></div>
+                    </div>
+                </div>
+            `;
+            resultSection.classList.remove('hidden');
+        } catch (error) {
+            loadingSpinner.classList.add('hidden');
+            errorMessage.textContent = error.message;
+            errorMessage.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

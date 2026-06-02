@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account - Cancer Risk Prediction System{% endblock %}
+
+{% block content %}
+<section class="auth-layout">
+    <div class="auth-copy">
+        <span class="eyebrow">New user</span>
+        <h1>Create an account for prediction access.</h1>
+        <p>Accounts protect the dashboard, assessment forms, and prediction API routes.</p>
+    </div>
+
+    <form class="auth-panel" method="post" action="{{ url_for('register') }}">
+        <div class="panel-heading">
+            <h2>Create account</h2>
+            <p>Choose a username and password.</p>
+        </div>
+
+        <label class="field" for="username">
+            <span>Username</span>
+            <input id="username" name="username" type="text" autocomplete="username" minlength="3" value="{{ username or '' }}" required>
+        </label>
+
+        <label class="field" for="password">
+            <span>Password</span>
+            <input id="password" name="password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+
+        <label class="field" for="confirm_password">
+            <span>Confirm password</span>
+            <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+
+        <button class="btn btn-primary" type="submit">Create account</button>
+
+        <p class="auth-switch">Already registered? <a href="{{ url_for('login') }}">Sign in</a></p>
+    </form>
+</section>
+{% endblock %}

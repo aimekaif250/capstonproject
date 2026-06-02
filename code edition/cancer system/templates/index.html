@@ -1,81 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cancer Risk Prediction System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header">
-            <h1>🏥 Cancer Risk Prediction System</h1>
-            <p class="subtitle">Machine Learning-Based Breast & Cervical Cancer Risk Assessment</p>
-        </div>
+{% extends "base.html" %}
 
-        <!-- Main Content -->
-        <div class="content">
-            <div class="welcome-box">
-                <h2>Welcome to the Prediction System</h2>
-                <p>This system uses advanced machine learning models to predict cancer risk based on patient data.</p>
-                <p class="disclaimer">⚠️ <strong>Disclaimer:</strong> This system is for educational purposes. Always consult with a qualified healthcare professional for medical diagnosis.</p>
-            </div>
+{% block title %}Dashboard - Cancer Risk Prediction System{% endblock %}
 
-            <!-- Cancer Type Selection -->
-            <div class="cancer-selection">
-                <h3>Select Cancer Type to Predict:</h3>
-                
-                <div class="button-group">
-                    <!-- Breast Cancer Button -->
-                    <a href="/breast" class="cancer-btn breast-btn">
-                        <div class="btn-icon">🎀</div>
-                        <div class="btn-content">
-                            <h4>Breast Cancer</h4>
-                            <p>Predict breast cancer risk using 6 features</p>
-                        </div>
-                        <div class="btn-arrow">→</div>
-                    </a>
-
-                    <!-- Cervical Cancer Button -->
-                    <a href="/cervical" class="cancer-btn cervical-btn">
-                        <div class="btn-icon">🏥</div>
-                        <div class="btn-content">
-                            <h4>Cervical Cancer</h4>
-                            <p>Predict cervical cancer risk using 5 features</p>
-                        </div>
-                        <div class="btn-arrow">→</div>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Information Section -->
-            <div class="info-section">
-                <div class="info-box">
-                    <h4>📊 How It Works:</h4>
-                    <ol>
-                        <li>Select the cancer type you want to predict</li>
-                        <li>Enter the required patient data</li>
-                        <li>Click "Predict" to get the risk assessment</li>
-                        <li>Review the prediction results and confidence level</li>
-                    </ol>
-                </div>
-
-                <div class="info-box">
-                    <h4>✅ What You Need:</h4>
-                    <ul>
-                        <li><strong>Breast Cancer:</strong> Medical measurements (6 features)</li>
-                        <li><strong>Cervical Cancer:</strong> Patient history data (5 features)</li>
-                        <li>Basic medical knowledge recommended</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <p>&copy; 2024 Cancer Risk Prediction System | Final Year Project | Machine Learning in Healthcare</p>
-        </div>
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Risk assessment dashboard</span>
+        <h1>Run breast and cervical cancer prediction workflows from one place.</h1>
+        <p>Enter structured clinical inputs, review model confidence, and compare probability outputs in a responsive web interface.</p>
     </div>
-</body>
-</html>
+    <div class="status-panel">
+        <span class="status-label">Signed in as</span>
+        <strong>{{ current_user }}</strong>
+        <span class="status-note">Prediction access enabled</span>
+    </div>
+</section>
+
+<section class="workflow-grid" aria-label="Prediction workflows">
+    <a class="workflow-card breast-accent" href="{{ url_for('breast_form') }}">
+        <span class="card-kicker">6 visible inputs</span>
+        <h2>Breast Cancer</h2>
+        <p>Cell nucleus measurements expanded into the full model feature vector.</p>
+        <span class="card-action">Start assessment</span>
+    </a>
+
+    <a class="workflow-card cervical-accent" href="{{ url_for('cervical_form') }}">
+        <span class="card-kicker">5 visible inputs</span>
+        <h2>Cervical Cancer</h2>
+        <p>Patient history values combined with dataset defaults for model scoring.</p>
+        <span class="card-action">Start assessment</span>
+    </a>
+</section>
+
+<section class="notice-band">
+    <strong>Educational use only.</strong>
+    <span>Predictions must not replace medical diagnosis, screening, or guidance from a qualified healthcare professional.</span>
+</section>
+{% endblock %}

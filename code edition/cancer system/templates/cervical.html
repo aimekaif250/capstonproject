@@ -1,207 +1,139 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cervical Cancer Prediction - Cancer Risk Prediction System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header">
-            <h1>🏥 Cervical Cancer Risk Prediction</h1>
-            <p class="subtitle">Enter patient history data to predict cervical cancer risk</p>
-            <a href="/" class="back-link">← Back to Home</a>
-        </div>
+{% extends "base.html" %}
 
-        <!-- Main Content -->
-        <div class="content">
-            <div class="form-container">
-                <h2>Patient History Data</h2>
-                <p class="form-description">Please provide the following information about the patient:</p>
+{% block title %}Cervical Cancer Assessment - Cancer Risk Prediction System{% endblock %}
 
-                <form id="cervicalForm">
-                    <div class="form-group">
-                        <label for="age">
-                            Age (Years) <span class="required">*</span>
-                            <span class="help-text">(Patient's current age)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="age" 
-                            name="age" 
-                            placeholder="e.g., 35" 
-                            min="1"
-                            max="120"
-                            required
-                        >
-                    </div>
+{% block content %}
+<section class="page-heading">
+    <a class="back-link" href="{{ url_for('home') }}">Back to dashboard</a>
+    <span class="eyebrow">Cervical cancer model</span>
+    <h1>Cervical cancer risk prediction</h1>
+    <p>Submit patient history values. The application expands them into the full model feature vector with dataset-based defaults.</p>
+</section>
 
-                    <div class="form-group">
-                        <label for="hpv">
-                            HPV Status <span class="required">*</span>
-                            <span class="help-text">(Human Papillomavirus)</span>
-                        </label>
-                        <select id="hpv" name="hpv" required>
-                            <option value="">-- Select HPV Status --</option>
-                            <option value="0">Negative (0)</option>
-                            <option value="1">Positive (1)</option>
-                        </select>
-                    </div>
+<section class="assessment-layout">
+    <aside class="assessment-aside">
+        <h2>Input set</h2>
+        <dl>
+            <div><dt>Visible fields</dt><dd>5</dd></div>
+            <div><dt>Model features</dt><dd>35</dd></div>
+            <div><dt>Output</dt><dd>Risk probability and confidence</dd></div>
+        </dl>
+        <p class="muted">Use documented patient history values for the assessment.</p>
+    </aside>
 
-                    <div class="form-group">
-                        <label for="smoking">
-                            Smoking Status <span class="required">*</span>
-                            <span class="help-text">(Current or past smoking history)</span>
-                        </label>
-                        <select id="smoking" name="smoking" required>
-                            <option value="">-- Select Smoking Status --</option>
-                            <option value="0">Non-Smoker (0)</option>
-                            <option value="1">Smoker (1)</option>
-                        </select>
-                    </div>
+    <div class="form-panel">
+        <form id="cervicalForm" class="prediction-form">
+            <div class="form-grid">
+                <label class="field" for="age">
+                    <span>Age</span>
+                    <input type="number" id="age" name="age" placeholder="35" min="1" max="120" required>
+                </label>
 
-                    <div class="form-group">
-                        <label for="pregnancies">
-                            Number of Pregnancies <span class="required">*</span>
-                            <span class="help-text">(Total number of pregnancies)</span>
-                        </label>
-                        <input 
-                            type="number" 
-                            id="pregnancies" 
-                            name="pregnancies" 
-                            placeholder="e.g., 2" 
-                            min="0"
-                            max="20"
-                            required
-                        >
-                    </div>
+                <label class="field" for="hpv">
+                    <span>HPV status</span>
+                    <select id="hpv" name="hpv" required>
+                        <option value="">Select status</option>
+                        <option value="0">Negative</option>
+                        <option value="1">Positive</option>
+                    </select>
+                </label>
 
-                    <div class="form-group">
-                        <label for="std_history">
-                            STD History <span class="required">*</span>
-                            <span class="help-text">(Sexually Transmitted Disease history)</span>
-                        </label>
-                        <select id="std_history" name="std_history" required>
-                            <option value="">-- Select STD History --</option>
-                            <option value="0">No STD History (0)</option>
-                            <option value="1">STD History Present (1)</option>
-                        </select>
-                    </div>
+                <label class="field" for="smoking">
+                    <span>Smoking status</span>
+                    <select id="smoking" name="smoking" required>
+                        <option value="">Select status</option>
+                        <option value="0">Non-smoker</option>
+                        <option value="1">Smoker</option>
+                    </select>
+                </label>
 
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">🔍 Predict Cancer Risk</button>
-                        <button type="reset" class="btn btn-secondary">↻ Clear Form</button>
-                    </div>
-                </form>
+                <label class="field" for="pregnancies">
+                    <span>Pregnancies</span>
+                    <input type="number" id="pregnancies" name="pregnancies" placeholder="2" min="0" max="20" required>
+                </label>
 
-                <!-- Loading indicator -->
-                <div id="loadingSpinner" class="loading-spinner hidden">
-                    <div class="spinner"></div>
-                    <p>Processing prediction...</p>
-                </div>
-
-                <!-- Result section (hidden initially) -->
-                <div id="resultSection" class="result-section hidden">
-                    <!-- Results will be displayed here by JavaScript -->
-                </div>
-
-                <!-- Error message (hidden initially) -->
-                <div id="errorMessage" class="error-message hidden"></div>
+                <label class="field" for="std_history">
+                    <span>STD history</span>
+                    <select id="std_history" name="std_history" required>
+                        <option value="">Select history</option>
+                        <option value="0">No history</option>
+                        <option value="1">History present</option>
+                    </select>
+                </label>
             </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Run prediction</button>
+                <button type="reset" class="btn btn-secondary">Clear</button>
+            </div>
+        </form>
+
+        <div id="loadingSpinner" class="loading-spinner hidden" aria-live="polite">
+            <div class="spinner"></div>
+            <p>Processing prediction...</p>
         </div>
 
-        <!-- Footer -->
-        <div class="footer">
-            <p>&copy; 2024 Cancer Risk Prediction System | Final Year Project</p>
-        </div>
+        <div id="resultSection" class="result-section hidden" aria-live="polite"></div>
+        <div id="errorMessage" class="error-message hidden" aria-live="assertive"></div>
     </div>
+</section>
 
-    <script>
-        // Handle form submission
-        document.getElementById('cervicalForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Show loading spinner
-            document.getElementById('loadingSpinner').classList.remove('hidden');
-            document.getElementById('resultSection').classList.add('hidden');
-            document.getElementById('errorMessage').classList.add('hidden');
-            
-            try {
-                // Collect form data
-                const formData = {
-                    age: document.getElementById('age').value,
-                    hpv: document.getElementById('hpv').value,
-                    smoking: document.getElementById('smoking').value,
-                    pregnancies: document.getElementById('pregnancies').value,
-                    std_history: document.getElementById('std_history').value
-                };
-                
-                // Send prediction request to backend
-                const response = await fetch('/predict/cervical', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-                
-                // Parse response
-                const data = await response.json();
-                
-                // Hide loading spinner
-                document.getElementById('loadingSpinner').classList.add('hidden');
-                
-                if (data.success) {
-                    // Display results
-                    const resultHTML = `
-                        <div class="result-success">
-                            <h3>✅ Prediction Results</h3>
-                            <div class="result-box">
-                                <div class="result-row">
-                                    <span class="result-label">Cancer Type:</span>
-                                    <span class="result-value">${data.cancer_type}</span>
-                                </div>
-                                <div class="result-row highlight">
-                                    <span class="result-label">Prediction:</span>
-                                    <span class="result-value prediction-${data.prediction.includes('No Cancer') ? 'safe' : 'risk'}">
-                                        ${data.prediction}
-                                    </span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Confidence:</span>
-                                    <span class="result-value">${data.confidence}</span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Probability (No Cancer):</span>
-                                    <span class="result-value">${data.probability_no_cancer}</span>
-                                </div>
-                                <div class="result-row">
-                                    <span class="result-label">Probability (Cancer Risk):</span>
-                                    <span class="result-value">${data.probability_cancer}</span>
-                                </div>
-                            </div>
-                            <div class="result-actions">
-                                <button onclick="location.href='/'" class="btn btn-primary">🏠 Home</button>
-                                <button onclick="location.href='/cervical'" class="btn btn-secondary">➕ Another Prediction</button>
-                            </div>
-                        </div>
-                    `;
-                    document.getElementById('resultSection').innerHTML = resultHTML;
-                    document.getElementById('resultSection').classList.remove('hidden');
-                } else {
-                    // Show error message
-                    document.getElementById('errorMessage').textContent = `Error: ${data.error}`;
-                    document.getElementById('errorMessage').classList.remove('hidden');
-                }
-            } catch (error) {
-                document.getElementById('loadingSpinner').classList.add('hidden');
-                document.getElementById('errorMessage').textContent = `Error: ${error.message}`;
-                document.getElementById('errorMessage').classList.remove('hidden');
-                console.error('Error:', error);
+<script>
+    const cervicalForm = document.getElementById('cervicalForm');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultSection = document.getElementById('resultSection');
+    const errorMessage = document.getElementById('errorMessage');
+
+    cervicalForm.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        loadingSpinner.classList.remove('hidden');
+        resultSection.classList.add('hidden');
+        errorMessage.classList.add('hidden');
+
+        const formData = {
+            age: document.getElementById('age').value,
+            hpv: document.getElementById('hpv').value,
+            smoking: document.getElementById('smoking').value,
+            pregnancies: document.getElementById('pregnancies').value,
+            std_history: document.getElementById('std_history').value
+        };
+
+        try {
+            const response = await fetch('/predict/cervical', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await response.json();
+            loadingSpinner.classList.add('hidden');
+
+            if (!data.success) {
+                errorMessage.textContent = data.error || 'Prediction failed.';
+                errorMessage.classList.remove('hidden');
+                return;
             }
-        });
-    </script>
-</body>
-</html>
+
+            const resultClass = data.prediction.includes('No Cancer') ? 'positive' : 'danger';
+            resultSection.innerHTML = `
+                <div class="result-card ${resultClass}">
+                    <div class="result-header">
+                        <span>${data.cancer_type}</span>
+                        <strong>${data.prediction}</strong>
+                    </div>
+                    <div class="metric-grid">
+                        <div><span>Confidence</span><strong>${data.confidence}</strong></div>
+                        <div><span>No cancer</span><strong>${data.probability_no_cancer}</strong></div>
+                        <div><span>Cancer risk</span><strong>${data.probability_cancer}</strong></div>
+                        <div><span>Features</span><strong>${data.input_features_used}/${data.total_features}</strong></div>
+                    </div>
+                </div>
+            `;
+            resultSection.classList.remove('hidden');
+        } catch (error) {
+            loadingSpinner.classList.add('hidden');
+            errorMessage.textContent = error.message;
+            errorMessage.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

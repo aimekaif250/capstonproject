@@ -3,16 +3,69 @@
 # Machine Learning-Based System for Breast and Cervical Cancer Risk Prediction
 # =====================================================
 
-from flask import Flask, render_template, request, jsonify
-import os, pickle, logging, csv
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, g
+from werkzeug.security import check_password_hash, generate_password_hash
+from functools import wraps
+import os, pickle, logging, csv, sqlite3
 import traceback
 import numpy as np
 
 # Initialize Flask application
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'capstone-dev-secret-key')
 
 # Set up paths for models
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
+DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+
+
+def get_db():
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE_PATH)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exception):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    with sqlite3.connect(DATABASE_PATH) as db:
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        db.commit()
+
+
+def login_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if 'user_id' not in session:
+            if request.path.startswith('/predict/'):
+                return jsonify({'success': False, 'error': 'Authentication required'}), 401
+            flash('Please sign in to continue.', 'info')
+            return redirect(url_for('login'))
+        return view(*args, **kwargs)
+    return wrapped_view
+
+
+@app.context_processor
+def inject_current_user():
+    return {'current_user': session.get('username')}
+
+
+init_db()
 
 def load_model(*filenames):
     for filename in filenames:
@@ -210,7 +263,80 @@ DEFAULT_VALUES = {
 
 CERVICAL_DEFAULT_VALUES = load_cervical_defaults()
 
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        user = get_db().execute(
+            'SELECT * FROM users WHERE username = ?',
+            (username,)
+        ).fetchone()
+
+        if user is None or not check_password_hash(user['password_hash'], password):
+            flash('Invalid username or password.', 'error')
+            return render_template('login.html', username=username)
+
+        session.clear()
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        flash('Welcome back.', 'success')
+        return redirect(url_for('home'))
+
+    return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if 'user_id' in session:
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if len(username) < 3:
+            flash('Username must be at least 3 characters.', 'error')
+            return render_template('register.html', username=username)
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'error')
+            return render_template('register.html', username=username)
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('register.html', username=username)
+
+        try:
+            db = get_db()
+            db.execute(
+                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+                (username, generate_password_hash(password))
+            )
+            db.commit()
+        except sqlite3.IntegrityError:
+            flash('That username is already registered.', 'error')
+            return render_template('register.html', username=username)
+
+        flash('Account created. Please sign in.', 'success')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    flash('Signed out successfully.', 'success')
+    return redirect(url_for('login'))
+
+
 @app.route('/')
+@login_required
 def home():
     """
     Home page route
@@ -220,6 +346,7 @@ def home():
 
 
 @app.route('/breast')
+@login_required
 def breast_form():
     """
     Breast cancer prediction form page
@@ -229,6 +356,7 @@ def breast_form():
 
 
 @app.route('/cervical')
+@login_required
 def cervical_form():
     """
     Cervical cancer prediction form page
@@ -238,6 +366,7 @@ def cervical_form():
 
 
 @app.route('/predict/breast', methods=['POST'])
+@login_required
 def predict_breast():
     """
     Predict breast cancer risk using 6 user inputs + 24 default values
@@ -330,6 +459,7 @@ def predict_breast():
 
 
 @app.route('/predict/cervical', methods=['POST'])
+@login_required
 def predict_cervical():
     """
     Predict cervical cancer risk
@@ -410,6 +540,7 @@ def predict_cervical():
 
 
 @app.route('/result', methods=['POST', 'GET'])
+@login_required
 def result_page():
     """
     Result page route

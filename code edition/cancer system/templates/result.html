@@ -1,39 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Results - Cancer Risk Prediction System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header">
-            <h1>📊 Prediction Results</h1>
-            <p class="subtitle">Your cancer risk assessment result</p>
-            <a href="/" class="back-link">← Back to Home</a>
-        </div>
+{% extends "base.html" %}
 
-        <!-- Main Content -->
-        <div class="content">
-            <div class="result-container">
-                <div class="result-info">
-                    <p>Your prediction results will be displayed below. Please submit a form from the home page to get started.</p>
-                </div>
+{% block title %}Results - Cancer Risk Prediction System{% endblock %}
 
-                <div class="result-actions">
-                    <a href="/" class="btn btn-primary">🏠 Go to Home Page</a>
-                    <a href="/breast" class="btn btn-secondary">🎀 Breast Cancer Prediction</a>
-                    <a href="/cervical" class="btn btn-secondary">🏥 Cervical Cancer Prediction</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <p>&copy; 2026 Cancer Risk Prediction System | Final Year Project</p>
-        </div>
-    </div>
-</body>
-</html>
+{% block content %}
+<section class="empty-state">
+    <span class="eyebrow">Results</span>
+    <h1>No stored result is available.</h1>
+    <p>Run an assessment from the dashboard to generate a prediction result.</p>
+    <a class="btn btn-primary" href="{{ url_for('home') }}">Go to dashboard</a>
+</section>
+{% endblock %}
