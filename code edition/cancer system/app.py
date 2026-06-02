@@ -4,7 +4,9 @@
 # =====================================================
 
 from flask import Flask, render_template, request, jsonify
-import os, pickle, logging
+import os, pickle, logging, csv
+import traceback
+import numpy as np
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -12,18 +14,21 @@ app = Flask(__name__)
 # Set up paths for models
 MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models')
 
-def load_model(filename):
-    path = os.path.join(MODEL_PATH, filename)
-    try:
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    except Exception as e:
-        logging.warning(f"Could not load model {filename}: {e}")
-        return None
+def load_model(*filenames):
+    for filename in filenames:
+        path = os.path.join(MODEL_PATH, filename)
+        try:
+            with open(path, "rb") as f:
+                model = pickle.load(f)
+            logging.info(f"Loaded model: {filename}")
+            return model
+        except Exception as e:
+            logging.warning(f"Could not load model {filename}: {e}")
+    return None
 
 # Load pre-trained machine learning models (fallback to None if missing)
-breast_model = load_model("breast_cancer_model.pkl")
-cervical_model = load_model("cervical_rf_model.pkl")
+breast_model = load_model("breast_model.pkl", "breast_cancer_model.pkl")
+cervical_model = load_model("cervical_cancer_model.pkl", "cervical_rf_model.pkl")
 
 
 # =====================================================
@@ -103,6 +108,77 @@ AUTO_FILLED_FEATURES = [
     'fractal_dimension_worst'
 ]
 
+CERVICAL_CANCER_FEATURES = [
+    'Age',
+    'Number of sexual partners',
+    'First sexual intercourse',
+    'Num of pregnancies',
+    'Smokes',
+    'Smokes (years)',
+    'Smokes (packs/year)',
+    'Hormonal Contraceptives',
+    'Hormonal Contraceptives (years)',
+    'IUD',
+    'IUD (years)',
+    'STDs',
+    'STDs (number)',
+    'STDs:condylomatosis',
+    'STDs:cervical condylomatosis',
+    'STDs:vaginal condylomatosis',
+    'STDs:vulvo-perineal condylomatosis',
+    'STDs:syphilis',
+    'STDs:pelvic inflammatory disease',
+    'STDs:genital herpes',
+    'STDs:molluscum contagiosum',
+    'STDs:AIDS',
+    'STDs:HIV',
+    'STDs:Hepatitis B',
+    'STDs:HPV',
+    'STDs: Number of diagnosis',
+    'STDs: Time since first diagnosis',
+    'STDs: Time since last diagnosis',
+    'Dx:Cancer',
+    'Dx:CIN',
+    'Dx:HPV',
+    'Dx',
+    'Hinselmann',
+    'Schiller',
+    'Citology'
+]
+
+CERVICAL_USER_INPUTS = {
+    'age': 'Age',
+    'hpv': 'STDs:HPV',
+    'smoking': 'Smokes',
+    'pregnancies': 'Num of pregnancies',
+    'std_history': 'STDs'
+}
+
+
+def load_cervical_defaults():
+    defaults = {feature: 0.0 for feature in CERVICAL_CANCER_FEATURES}
+    counts = {feature: 0 for feature in CERVICAL_CANCER_FEATURES}
+    path = os.path.join(MODEL_PATH, 'risk_factors_cervical_cancer.csv')
+
+    try:
+        with open(path, newline='') as csvfile:
+            for row in csv.DictReader(csvfile):
+                for feature in CERVICAL_CANCER_FEATURES:
+                    value = row.get(feature)
+                    if value in (None, '', '?'):
+                        continue
+                    defaults[feature] += float(value)
+                    counts[feature] += 1
+    except Exception as e:
+        logging.warning(f"Could not load cervical defaults: {e}")
+        return defaults
+
+    for feature, count in counts.items():
+        if count:
+            defaults[feature] = defaults[feature] / count
+
+    return defaults
+
 # Default mean values for auto-filled features
 # These are the mean values from the Breast Cancer Wisconsin dataset
 DEFAULT_VALUES = {
@@ -131,6 +207,8 @@ DEFAULT_VALUES = {
     'symmetry_worst': 0.29008,
     'fractal_dimension_worst': 0.08395
 }
+
+CERVICAL_DEFAULT_VALUES = load_cervical_defaults()
 
 @app.route('/')
 def home():
@@ -278,21 +356,23 @@ def predict_cervical():
         # Get data from request
         data = request.get_json()
         
-        # Extract features in correct order
-        features = [
-            int(data.get('age', 0)),
-            int(data.get('hpv', 0)),
-            int(data.get('smoking', 0)),
-            int(data.get('pregnancies', 0)),
-            int(data.get('std_history', 0))
-        ]
+        user_inputs = {}
+        for input_name, feature_name in CERVICAL_USER_INPUTS.items():
+            value = data.get(input_name)
+            if value is None:
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required input: {input_name}'
+                }), 400
+            user_inputs[feature_name] = float(value)
         
-        # Validate that we have all features
-        if len(features) != 5:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid number of features provided'
-            }), 400
+        # Build complete feature vector (35 features)
+        features = []
+        for feature_name in CERVICAL_CANCER_FEATURES:
+            if feature_name in user_inputs:
+                features.append(user_inputs[feature_name])
+            else:
+                features.append(CERVICAL_DEFAULT_VALUES[feature_name])
         
         # Convert to numpy array and reshape for model prediction
         features_array = np.array(features).reshape(1, -1)
@@ -311,7 +391,9 @@ def predict_cervical():
             'confidence': f"{confidence:.2f}%",
             'probability_no_cancer': f"{probability[0] * 100:.2f}%",
             'probability_cancer': f"{probability[1] * 100:.2f}%",
-            'cancer_type': 'Cervical Cancer'
+            'cancer_type': 'Cervical Cancer',
+            'input_features_used': len(user_inputs),
+            'total_features': len(features)
         }), 200
         
     except ValueError as e:
