@@ -6,7 +6,8 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from functools import wraps
-import os, pickle, logging, csv, sqlite3
+import os, pickle, logging, csv, sqlite3, json
+from datetime import date, timedelta
 import traceback
 import numpy as np
 
@@ -41,10 +42,44 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                is_admin INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """
         )
+        columns = [row[1] for row in db.execute("PRAGMA table_info(users)").fetchall()]
+        if 'is_admin' not in columns:
+            db.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS prediction_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                username TEXT NOT NULL,
+                cancer_type TEXT NOT NULL,
+                prediction TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                probability_negative REAL NOT NULL,
+                probability_positive REAL NOT NULL,
+                input_features_used INTEGER NOT NULL,
+                total_features INTEGER NOT NULL,
+                inputs_json TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        admin_count = db.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1").fetchone()[0]
+        user_count = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        if user_count and not admin_count:
+            db.execute(
+                """
+                UPDATE users
+                SET is_admin = 1
+                WHERE id = (
+                    SELECT id FROM users ORDER BY created_at ASC, id ASC LIMIT 1
+                )
+                """
+            )
         db.commit()
 
 
@@ -60,9 +95,25 @@ def login_required(view):
     return wrapped_view
 
 
+def admin_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please sign in to continue.', 'info')
+            return redirect(url_for('login'))
+        if not session.get('is_admin'):
+            flash('Admin access is required.', 'error')
+            return redirect(url_for('home'))
+        return view(*args, **kwargs)
+    return wrapped_view
+
+
 @app.context_processor
 def inject_current_user():
-    return {'current_user': session.get('username')}
+    return {
+        'current_user': session.get('username'),
+        'current_is_admin': session.get('is_admin', False)
+    }
 
 
 init_db()
@@ -302,6 +353,229 @@ DEFAULT_VALUES = load_breast_defaults()
 CERVICAL_DEFAULT_VALUES = load_cervical_defaults()
 
 
+def model_positive_label(cancer_type):
+    return 'Malignant' if cancer_type == 'Breast Cancer' else 'Cancer risk'
+
+
+def log_prediction(cancer_type, result, confidence, probabilities, input_features_used, total_features, user_inputs):
+    db = get_db()
+    db.execute(
+        """
+        INSERT INTO prediction_reports (
+            user_id,
+            username,
+            cancer_type,
+            prediction,
+            confidence,
+            probability_negative,
+            probability_positive,
+            input_features_used,
+            total_features,
+            inputs_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            session.get('user_id'),
+            session.get('username', 'unknown'),
+            cancer_type,
+            result,
+            float(confidence),
+            float(probabilities[0] * 100),
+            float(probabilities[1] * 100),
+            input_features_used,
+            total_features,
+            json.dumps(user_inputs, sort_keys=True)
+        )
+    )
+    db.commit()
+
+
+def get_breast_feature_importance(limit=12):
+    model = breast_model
+    estimator = getattr(model, 'named_steps', {}).get('logisticregression') if hasattr(model, 'named_steps') else model
+    coefficients = getattr(estimator, 'coef_', None)
+    if coefficients is None:
+        return []
+
+    values = np.abs(coefficients[0])
+    ranked = sorted(zip(BREAST_CANCER_FEATURES, values), key=lambda item: item[1], reverse=True)
+    max_value = float(ranked[0][1]) if ranked else 1.0
+    return [
+        {
+            'name': name.replace('_', ' ').replace('concave points', 'concave points'),
+            'score': float(score),
+            'percent': round((float(score) / max_value) * 100, 2) if max_value else 0
+        }
+        for name, score in ranked[:limit]
+    ]
+
+
+def get_cervical_feature_importance(limit=12):
+    values = getattr(cervical_model, 'feature_importances_', None)
+    if values is None:
+        return []
+
+    ranked = sorted(zip(CERVICAL_CANCER_FEATURES, values), key=lambda item: item[1], reverse=True)
+    max_value = float(ranked[0][1]) if ranked else 1.0
+    return [
+        {
+            'name': name,
+            'score': float(score),
+            'percent': round((float(score) / max_value) * 100, 2) if max_value else 0
+        }
+        for name, score in ranked[:limit]
+    ]
+
+
+def get_admin_dashboard_data():
+    db = get_db()
+    rows = db.execute(
+        """
+        SELECT *
+        FROM prediction_reports
+        ORDER BY created_at DESC, id DESC
+        LIMIT 25
+        """
+    ).fetchall()
+
+    total = db.execute('SELECT COUNT(*) AS count FROM prediction_reports').fetchone()['count']
+    breast_total = db.execute(
+        "SELECT COUNT(*) AS count FROM prediction_reports WHERE cancer_type = 'Breast Cancer'"
+    ).fetchone()['count']
+    cervical_total = db.execute(
+        "SELECT COUNT(*) AS count FROM prediction_reports WHERE cancer_type = 'Cervical Cancer'"
+    ).fetchone()['count']
+    positive_total = db.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM prediction_reports
+        WHERE prediction LIKE '%Malignant%' OR prediction LIKE '%Detected%'
+        """
+    ).fetchone()['count']
+
+    today = date.today()
+    days = [(today - timedelta(days=offset)).isoformat() for offset in range(13, -1, -1)]
+    daily_lookup = {
+        (row['day'], row['cancer_type']): row['count']
+        for row in db.execute(
+            """
+            SELECT DATE(created_at) AS day, cancer_type, COUNT(*) AS count
+            FROM prediction_reports
+            WHERE DATE(created_at) >= DATE('now', '-13 days')
+            GROUP BY DATE(created_at), cancer_type
+            """
+        ).fetchall()
+    }
+    time_series = []
+    for day in days:
+        breast_count = daily_lookup.get((day, 'Breast Cancer'), 0)
+        cervical_count = daily_lookup.get((day, 'Cervical Cancer'), 0)
+        time_series.append({
+            'day': day,
+            'label': day[-5:],
+            'breast': breast_count,
+            'cervical': cervical_count,
+            'total': breast_count + cervical_count
+        })
+    max_series = max([row['total'] for row in time_series], default=1)
+    for row in time_series:
+        row['breast_percent'] = round((row['breast'] / max_series) * 100, 2) if max_series else 0
+        row['cervical_percent'] = round((row['cervical'] / max_series) * 100, 2) if max_series else 0
+        row['total_percent'] = round((row['total'] / max_series) * 100, 2) if max_series else 0
+    chart_width = 640
+    chart_height = 220
+    chart_pad = 18
+
+    def build_chart_points(key):
+        points = []
+        usable_width = chart_width - (chart_pad * 2)
+        usable_height = chart_height - (chart_pad * 2)
+        denominator = max(len(time_series) - 1, 1)
+        for index, row in enumerate(time_series):
+            x = chart_pad + ((index / denominator) * usable_width)
+            y = chart_pad + (usable_height - ((row[key] / max_series) * usable_height if max_series else 0))
+            points.append({
+                'x': round(x, 2),
+                'y': round(y, 2),
+                'value': row[key],
+                'label': row['label']
+            })
+        return points
+
+    chart = {
+        'width': chart_width,
+        'height': chart_height,
+        'max': max_series,
+        'total_points': build_chart_points('total'),
+        'breast_points': build_chart_points('breast'),
+        'cervical_points': build_chart_points('cervical')
+    }
+    for key in ('total_points', 'breast_points', 'cervical_points'):
+        chart[key + '_attr'] = ' '.join([f"{point['x']},{point['y']}" for point in chart[key]])
+
+    distribution_rows = db.execute(
+        """
+        SELECT cancer_type, prediction, COUNT(*) AS count
+        FROM prediction_reports
+        GROUP BY cancer_type, prediction
+        ORDER BY cancer_type, count DESC
+        """
+    ).fetchall()
+    distribution = [dict(row) for row in distribution_rows]
+    max_distribution = max([row['count'] for row in distribution], default=1)
+    for row in distribution:
+        row['percent'] = round((row['count'] / max_distribution) * 100, 2) if max_distribution else 0
+
+    users = db.execute(
+        """
+        SELECT
+            users.id,
+            users.username,
+            users.is_admin,
+            users.created_at,
+            COUNT(prediction_reports.id) AS report_count
+        FROM users
+        LEFT JOIN prediction_reports ON prediction_reports.user_id = users.id
+        GROUP BY users.id
+        ORDER BY users.is_admin DESC, users.created_at ASC
+        """
+    ).fetchall()
+
+    breast_positive = db.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM prediction_reports
+        WHERE cancer_type = 'Breast Cancer' AND prediction LIKE '%Malignant%'
+        """
+    ).fetchone()['count']
+    cervical_positive = db.execute(
+        """
+        SELECT COUNT(*) AS count
+        FROM prediction_reports
+        WHERE cancer_type = 'Cervical Cancer' AND prediction LIKE '%Detected%'
+        """
+    ).fetchone()['count']
+
+    return {
+        'stats': {
+            'total': total,
+            'breast_total': breast_total,
+            'cervical_total': cervical_total,
+            'positive_total': positive_total,
+            'breast_positive': breast_positive,
+            'cervical_positive': cervical_positive,
+            'users_total': len(users)
+        },
+        'recent_reports': rows,
+        'time_series': time_series,
+        'chart': chart,
+        'distribution': distribution,
+        'breast_importance': get_breast_feature_importance(),
+        'cervical_importance': get_cervical_feature_importance(),
+        'users': users
+    }
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
@@ -323,6 +597,7 @@ def login():
         session.clear()
         session['user_id'] = user['id']
         session['username'] = user['username']
+        session['is_admin'] = bool(user['is_admin'])
         flash('Welcome back.', 'success')
         return redirect(url_for('home'))
 
@@ -351,9 +626,10 @@ def register():
 
         try:
             db = get_db()
+            is_first_user = db.execute('SELECT COUNT(*) AS count FROM users').fetchone()['count'] == 0
             db.execute(
-                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
-                (username, generate_password_hash(password))
+                'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+                (username, generate_password_hash(password), 1 if is_first_user else 0)
             )
             db.commit()
         except sqlite3.IntegrityError:
@@ -381,6 +657,12 @@ def home():
     Displays welcome page with cancer type selection
     """
     return render_template('index.html')
+
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    return render_template('admin.html', dashboard=get_admin_dashboard_data())
 
 
 @app.route('/breast')
@@ -430,7 +712,7 @@ def predict_breast():
             }), 500
         
         # Get data from request
-        data = request.get_json()
+        data = request.get_json() or {}
         
         # Validate and extract user input features
         user_inputs = {}
@@ -471,6 +753,15 @@ def predict_breast():
         # Map prediction to readable result
         result = "Malignant (Cancer)" if prediction == 1 else "Benign (Non-Cancerous)"
         confidence = max(probability) * 100
+        log_prediction(
+            'Breast Cancer',
+            result,
+            confidence,
+            probability,
+            len(user_inputs),
+            len(features),
+            user_inputs
+        )
         
         return jsonify({
             'success': True,
@@ -545,6 +836,15 @@ def predict_cervical():
         # Map prediction to readable result
         result = "Cancer Risk Detected" if prediction == 1 else "No Cancer Risk"
         confidence = max(probability) * 100
+        log_prediction(
+            'Cervical Cancer',
+            result,
+            confidence,
+            probability,
+            len(user_inputs),
+            len(features),
+            user_inputs
+        )
         
         return jsonify({
             'success': True,
